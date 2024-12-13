@@ -7,3 +7,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_executable(day_1 day1/main.cpp)
 add_executable(day_2 day2/main.cpp)
+add_executable(day_3 day3/main.cpp)
