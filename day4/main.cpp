@@ -37,7 +37,6 @@ struct Position
 {
     const uint16_t row;
     const uint16_t col;
-    bool marked { false }; // true when this is a valid position 
 
     Position(const uint16_t r, const uint16_t c) : row{r}, col{c} 
     {
@@ -52,11 +51,6 @@ struct Position
     string print() const 
     {
         return "[" + to_string(row) + "," + to_string(col) + "]";
-    }
-
-    void mark() 
-    {
-        marked = true;
     }
 
     uint16_t index() const
@@ -80,7 +74,7 @@ struct Position
         }
 
         // Just some invalid value
-        return Position(1000,1000);
+        return Position(UINT16_MAX,UINT16_MAX);
     }
 
     bool operator == (const Position &other) const
