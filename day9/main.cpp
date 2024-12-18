@@ -11,7 +11,7 @@
 #include <regex>
 #include <cctype>
 
-#define TEST
+//#define TEST
 
 #ifdef TEST
 #define DATA "test.txt"
@@ -39,6 +39,7 @@ struct Sloth
     void occupy(const Sloth& s) 
     {
         id = s.id;
+        size = s.size;
     }
 
     void clear() 
@@ -140,7 +141,7 @@ public:
     {
         // Loop backwards
         const auto size = sloths.size();
-        for (uint64_t i = sloths.size()-1; i >= 0;) 
+        for (int64_t i = sloths.size()-1; i >= 0;) 
         {
             auto& sloth = sloths[i];
             
@@ -187,9 +188,23 @@ public:
             print();
 #endif
 
-            // Update
-            filledUpTo = firstEmptyNdx + sloth.size;
-            consecutiveEmptyFromEnd += sloth.size;
+            // Update: find first empty slot
+            for (int j = filledUpTo; j < size; j++) 
+            {
+                if (sloths[j].empty()) 
+                {
+                    filledUpTo = j;
+                    break;
+                }
+            }
+            // Update: just a little larger than i to stop looping but conditions to break still work
+            consecutiveEmptyFromEnd = size - i;
+
+            if (filledUpTo > i) 
+            {
+                // No need to go on..
+                break;
+            }
         }
     }
 
@@ -289,6 +304,9 @@ std::unique_ptr<DiskMap> read_input(const std::string filename)
 void part1() 
 {
     auto map = read_input("/home/thys/source/aoc/2024/day9/" DATA);
+#ifdef TEST
+    map->print();
+#endif
     map->remapDisk();
     std::cout << "Checksum: " << map->checksum() << std::endl;
 }
@@ -296,6 +314,9 @@ void part1()
 void part2() 
 {
     auto map = read_input("/home/thys/source/aoc/2024/day9/" DATA);
+#ifdef TEST
+    map->print();
+#endif
     map->remapDiskNoFragmentation();
     std::cout << "Checksum: " << map->checksum() << std::endl;
 }
