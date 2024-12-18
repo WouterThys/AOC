@@ -59,7 +59,7 @@ struct BinaryAdd : public IAddLsb
         {
             return '*';
         }
-        else 
+        else /* ch == '*' // => back to '+' and carry */
         {
             carry = true;
             return '+';
@@ -85,7 +85,11 @@ struct TernaryAdd : public IAddLsb
         {
             return '*';
         }
-        else 
+        else if (ch == '*') 
+        {
+            return '|';
+        }
+        else /* ch == '|' // => back to '+' and carry */
         {
             carry = true;
             return '+';
@@ -132,7 +136,7 @@ public:
         questions.push_back(q);
     }
 
-    void printCombination(const Question& q, int combination) 
+    void printCombination(const Question& q, string combination) 
     {
         for (int i = 0; i < q.numbers.size(); i++) 
         {
@@ -142,15 +146,7 @@ public:
             }
             else 
             {
-                int operation = (combination & (0x1 << i));
-                if (operation == 0) 
-                {
-                    cout << q.numbers[i] << " * ";
-                }
-                else 
-                {
-                    cout << q.numbers[i] << " + ";
-                }
+                cout << q.numbers[i] << combination[i];
             }
         }
         cout << endl;
@@ -164,11 +160,24 @@ public:
             char op = combination[c];
             if (op == '*') 
             {
+                // Multiply
                 lastResult = q.numbers[i] * lastResult;
+            }
+            else if (op == '+')
+            {
+                // Add
+                lastResult = q.numbers[i] + lastResult;
+            }
+            else if (op == '|') 
+            {
+                // Concatenate
+                string strVal = to_string(lastResult) + to_string(q.numbers[i]);
+                lastResult = stoull(strVal);
             }
             else 
             {
-                lastResult = q.numbers[i] + lastResult;
+                cout << "Invalid operation" << endl;
+                return false;
             }
 
             if (lastResult > q.answer) 
@@ -179,25 +188,6 @@ public:
         }
 
         return lastResult == q.answer;
-    }
-
-    string createCombination(const Question& q, int combination) 
-    {
-        string result = "";
-        for (int i = 1, c = 0; i < q.numbers.size(); i++, c++) 
-        {
-            int operation = (combination & (0x1 << c));
-            if (operation == 0) 
-            {
-                result += "*";
-            }
-            else 
-            {
-                result += "+";
-            }
-        }
-
-        return result;
     }
 
     void nextCombination(string& current, IAddLsb* adder) 
@@ -231,7 +221,7 @@ public:
                 if (tryCombination(q, comb)) 
                 {
                     possible.push_back(q);
-                    printCombination(q, c);
+                    printCombination(q, comb);
                     break;
                 }
             }
@@ -283,15 +273,16 @@ unique_ptr<Data> read_input(string filename)
 
 void part1() 
 {
-    auto data = read_input("/home/waldo/source/aoc/2024/day7/" DATA);
+    auto data = read_input("../day7/" DATA);
     auto adder = BinaryAdd();
     data->run(&adder);
 }
 
 void part2() 
 {
-    //auto data = read_input("/home/waldo/source/aoc/2024/day7/" DATA);
-
+    auto data = read_input("../day7/" DATA);
+    auto adder = TernaryAdd();
+    data->run(&adder);
 }
 
 int main(int argc, char* argv[]) 
@@ -301,8 +292,8 @@ int main(int argc, char* argv[])
     cout  << "TEST TEST TEST" << endl;
 #endif
 
-    part1();
-    //part2();
+    //part1();
+    part2();
 
     return 0;
 }
