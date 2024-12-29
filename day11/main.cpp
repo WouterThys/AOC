@@ -11,7 +11,7 @@
 #include <regex>
 #include <cctype>
 
-//#define TEST
+#define TEST
 
 #ifdef TEST
 #define DATA "test.txt"
@@ -37,82 +37,78 @@ public:
         uint64_t value;
         while (lineStream >> value) 
         {
-            stones.push_back(value);
+            stones[value] += 1;
         }
     }
 
     void iterate(int times) 
     {
-        std::vector<uint64_t> temp;
         for (int i = 0; i < times; i++) 
         {
-            temp.clear();
-            runOnce(stones, temp);
-            stones = temp;
-#ifdef TEST
-        print(stones);
-#endif
+            blink(stones);
         }
 
-        std::cout << "After " << times << " times, there are " << stones.size() << " stones" << std::endl;
+        uint64_t sum = 0;
+        for (const auto& pair : stones) 
+        {
+            sum += pair.second;
+        }
+
+        std::cout << "Result: " << sum << std::endl;
     }
 
-    void runOnce(std::vector<uint64_t>& input, std::vector<uint64_t>& output) 
+    void blink(std::unordered_map<uint64_t, uint64_t>& stones) 
     {
-        int64_t out1, out2 = 0;
-        for(const auto val : input) 
-        {
-            apply(val, out1, out2);
-            output.push_back(out1);
-            if (out2 >= 0) 
+        static std::unordered_map<uint64_t, std::vector<uint64_t>> results;
+        static std::unordered_map<uint64_t, uint64_t> nextStones;
+
+        nextStones.clear();
+        for(const auto& pair : stones) {
+            const uint64_t& stone = pair.first;
+            
+            // '0' -> increment count for '1'
+            if(stone == 0) 
             {
-                output.push_back(out2);
+                nextStones[1] += pair.second;
+                continue;
+            }
+
+            // Keep cache of results to not compute again, check if cache has value
+            auto& res = results[stone];
+            if(res.size() == 0) 
+            {
+                res = apply(stone);
+            }
+
+            for(const uint64_t& val : res) {
+                nextStones[val] += pair.second;
             }
         }
+
+        stones = nextStones;
     }
 
-    void apply(const uint64_t val, int64_t& out1, int64_t& out2) const
+    std::vector<uint64_t> apply(const uint64_t val) const
     {
-        out1 = -1;
-        out2 = -1;
-
+        std::vector<uint64_t> result;
         // Helper
         std::string strVal = std::to_string(val);
-
-        // Rule 1: If the stone is engraved with the number 0, it is replaced by a stone engraved with the number 1
-        if (val == 0) 
-        {
-            out1 = 1;
-        }
         // If the stone is engraved with a number that has an even number of digits, it is replaced by two stones
-        else if (strVal.length() %2 == 0)
+        if (strVal.length() %2 == 0)
         {
-            out1 = std::stoull( strVal.substr(0, strVal.length() / 2) );
-            out2 = std::stoull( strVal.substr(strVal.length() / 2, strVal.length()) );
+            result.push_back ( std::stoull( strVal.substr(0, strVal.length() / 2) ) );
+            result.push_back ( std::stoull( strVal.substr(strVal.length() / 2, strVal.length()) ));
         }
         // The old stone's number multiplied by 2024 is engraved on the new stone
         else 
         {
-            out1 = val * 2024;
+            result.push_back ( val * 2024 );
         }
-    }
-
-    void print() const 
-    {
-        print(stones);
-    }
-
-    void print(const std::vector<uint64_t>& v) const 
-    {
-        for (const auto val : v) 
-        {
-            std::cout << val << " ";
-        }
-        std::cout << std::endl;
+        return result;
     }
 
 private:
-    std::vector<uint64_t> stones;
+    std::unordered_map<uint64_t, uint64_t> stones;
 };
 
 std::unique_ptr<Stoner> read_input(const std::string filename) 
@@ -136,11 +132,8 @@ std::unique_ptr<Stoner> read_input(const std::string filename)
 void part1() 
 {
     auto map = read_input("../day11/" DATA);
-    map->iterate(25);
+    map->iterate(75);
 
-#ifdef TEST
-    map->print();
-#endif
 }
 
 void part2() 
