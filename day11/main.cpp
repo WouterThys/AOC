@@ -59,7 +59,6 @@ public:
 
     void blink(std::unordered_map<uint64_t, uint64_t>& stones) 
     {
-        static std::unordered_map<uint64_t, std::vector<uint64_t>> results;
         static std::unordered_map<uint64_t, uint64_t> nextStones;
 
         nextStones.clear();
@@ -73,14 +72,10 @@ public:
                 continue;
             }
 
-            // Keep cache of results to not compute again, check if cache has value
-            auto& res = results[stone];
-            if(res.size() == 0) 
-            {
-                res = apply(stone);
-            }
+            auto res = apply(stone);
 
-            for(const uint64_t& val : res) {
+            for(const uint64_t& val : res) 
+            {
                 nextStones[val] += pair.second;
             }
         }
