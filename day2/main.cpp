@@ -143,11 +143,9 @@ void read_input(string filename, vector<Report>& result)
 
 int main (int argc, char* archv[]) 
 {
-    cout << "hallo" << endl;
-
     vector<Report> reports;
     //read_input("/home/thys/source/aoc/2024/day2/test.txt", reports);
-    read_input("/home/thys/source/aoc/2024/day2/data.txt", reports);
+    read_input("../day2/data.txt", reports);
 
     cout << "Got " << reports.size() << " reports" << endl;
 
