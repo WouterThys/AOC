@@ -18,7 +18,7 @@
 #include <chrono>
 #include <thread>
 
-#define TEST
+//#define TEST
 
 #ifdef TEST
 #define DATA "test.txt"
@@ -40,18 +40,19 @@ instruction pointer: += 2
 
 struct IComputer 
 {
-    virtual int regA() const = 0;
-    virtual int regB() const = 0;
-    virtual int regC() const = 0;
+    virtual int64_t regA() const = 0;
+    virtual int64_t regB() const = 0;
+    virtual int64_t regC() const = 0;
 
-    virtual void setA(int value) = 0;
-    virtual void setB(int value) = 0;
-    virtual void setC(int value) = 0;
+    virtual void setA(int64_t value) = 0;
+    virtual void setB(int64_t value) = 0;
+    virtual void setC(int64_t value) = 0;
     virtual void out(int value) = 0;
 
     /* Increment the instruction pointer */
     virtual void inc() = 0;
     virtual void setIPtr(int value) = 0;
+    virtual int getIPtr() const = 0;
 };
 
 class Operand 
@@ -112,10 +113,13 @@ struct adv : public Instruction
 {
     bool execute(IComputer* cmp, const Operand* operand) override
     {
-        int a = cmp->regA();
+        int64_t a = cmp->regA();
         a = a >> operand->getCombo(cmp);
         cmp->setA(a);
         cmp->inc();
+#ifdef TEST
+        printf("%d,%d adv -> A = %d\n", 0, operand->getLiteral(), cmp->regA()); 
+#endif
         return true; 
     }
 };
@@ -125,9 +129,12 @@ struct bxl : public Instruction
 {
     bool execute(IComputer* cmp, const Operand* operand) override
     {
-        int val = cmp->regB() ^ operand->getLiteral();
+        int64_t val = cmp->regB() ^ operand->getLiteral();
         cmp->setB(val);
         cmp->inc();
+#ifdef TEST
+        printf("%d,%d bxl -> B = %d\n", 1, operand->getLiteral(), cmp->regB()); 
+#endif
         return true; 
     }
 };
@@ -137,9 +144,12 @@ struct bst : public Instruction
 {
     bool execute(IComputer* cmp, const Operand* operand) override
     {
-        int val = operand->getCombo(cmp) & 7;
+        int64_t val = operand->getCombo(cmp) & 7;
         cmp->setB(val);
         cmp->inc();
+#ifdef TEST
+        printf("%d,%d bst -> B = %d\n", 2, operand->getLiteral(), cmp->regB()); 
+#endif
         return true;  
     }
 };
@@ -157,6 +167,9 @@ struct jnz : public Instruction
         {
             cmp->inc();
         }
+#ifdef TEST
+        printf("%d,%d jnz -> ipc = %d\n", 3, operand->getLiteral(), cmp->getIPtr());
+#endif
         return true;  
     }
 };
@@ -166,9 +179,12 @@ struct bxc : public Instruction
 {
     bool execute(IComputer* cmp, const Operand* operand) override
     {
-        int val = cmp->regB() ^ cmp->regC();
+        int64_t val = cmp->regB() ^ cmp->regC();
         cmp->setB(val);
         cmp->inc();
+#ifdef TEST
+        printf("%d,%d bxc -> B = %d\n", 4, operand->getLiteral(), cmp->regB());
+#endif
         return true;  
     }
 };
@@ -178,9 +194,12 @@ struct out : public Instruction
 {
     bool execute(IComputer* cmp, const Operand* operand) override
     {
-        int val = operand->getCombo(cmp) & 7;
+        int64_t val = operand->getCombo(cmp) & 7;
         cmp->out(val);
         cmp->inc();
+#ifdef TEST
+        printf("%d,%d out -> out = %d\n", 5, operand->getLiteral(), val);
+#endif
         return true;  
     }
 };
@@ -190,10 +209,13 @@ struct bdv : public Instruction
 {
     bool execute(IComputer* cmp, const Operand* operand) override
     {
-        int a = cmp->regA();
+        int64_t a = cmp->regA();
         a = a >> operand->getCombo(cmp);
         cmp->setB(a);
         cmp->inc();
+#ifdef TEST
+        printf("%d,%d bdv -> B = %d\n", 6, operand->getLiteral(), cmp->regB());
+#endif
         return true; 
     }
 };
@@ -203,10 +225,13 @@ struct cdv : public Instruction
 {
     bool execute(IComputer* cmp, const Operand* operand) override
     {
-        int a = cmp->regA();
+        int64_t a = cmp->regA();
         a = a >> operand->getCombo(cmp);
         cmp->setC(a);
         cmp->inc();
+#ifdef TEST
+        printf("%d,%d cdv -> C = %d\n", 7, operand->getLiteral(), cmp->regC());
+#endif
         return true; 
     }
 };
@@ -264,25 +289,43 @@ public:
 
     bool iterate() 
     {
+        if (output_.size() > size_) 
+        {
+            //std::cout << "Early break when output > input (" << size_ << std::endl;
+            // Early break
+            return false;
+        }
         if (iPtr_ >= 0 && iPtr_ < size_) 
         {
-            auto instruction = INSTRUCTIONS[program_[iPtr_]].get();
-            auto operand = Operand(program_[iPtr_+1]);
-
-            auto res = instruction->execute(this, &operand);
-
-            if (regA_ < 0 || regB_ < 0 || regC_ < 0) 
+#ifdef TEST
+            if (iPtr_ == 0) 
             {
-                return false;
+                printf("\n");
             }
+#endif
+
+            auto opcode = program_[iPtr_];
+            auto operand = program_[iPtr_+1];
+
+            auto instruction = INSTRUCTIONS[opcode].get();
+            auto param = Operand(operand);
+
+            auto res = instruction->execute(this, &param);
 
             return res;
         }
         return false;
     }
 
-    int recurse(int A, int digit) 
+    int recurse(int64_t A, int digit) 
     {
+
+/*
+    As the program works with the last 3 bits from the A register (start with %8 of A) we
+    can search for a 3 bit value that produces the output. Start searching with last digit,
+    bitshift 3 positions, search for next , bitshift, ...
+*/
+
         if (digit < 0) 
         {
             // We have found it!!
@@ -290,29 +333,36 @@ public:
             return A;
         }
 
-        // Shift
         A = A << 3;
-        int target = program_[digit];
+        std::cout << A << std::endl;
 
-        // Each 3-bit part of A produces 1 output, so look for only these values
+        // Output we expect
+        int expected = program_[digit];
+
         for (int i = 0; i < 8; i++) 
         {
             reset();
-            int newA = A + i;
-            setA(newA);
+            setA(A+i);
 
-            while(iterate()) { }
+            while (iterate());
 
-            int found = output_[0];
-            if (found == target) 
+            if (output_.size() > 0) 
             {
-                int res = recurse(newA, digit-1);
-                if (res >= 0) 
+                int result = output_[0];
+                if (result == expected) 
                 {
-                    return res;
+                    // Found a digit, recurse to the next one
+                    result = recurse(A+i, digit-1);
+                    if (result >= 0) 
+                    {
+                        return result;
+                    }
                 }
             }
         }
+
+        // If we arrive here it is not possible to create the output with 
+        // the current value A. Return no success and try the next option.. 
 
         return -1;
     }
@@ -365,26 +415,26 @@ public:
         size_ = program_.size();
     }
 
-    int regA() const override { return regA_; }
-    int regB() const override { return regB_; }
-    int regC() const override { return regC_; }
+    int64_t regA() const override { return regA_; }
+    int64_t regB() const override { return regB_; }
+    int64_t regC() const override { return regC_; }
 
-    void setA(int value) override { regA_ = value; };
-    void setB(int value) override { regB_ = value; };
-    void setC(int value) override { regC_ = value; };
+    void setA(int64_t value) override { regA_ = value; };
+    void setB(int64_t value) override { regB_ = value; };
+    void setC(int64_t value) override { regC_ = value; };
     void out(int value) override { output_.push_back(value); };
 
     void inc() override { iPtr_ = iPtr_ + 2; }
     void setIPtr(int value) override { iPtr_ = value; }
+    int getIPtr() const override { return iPtr_; };
 
     size_t getSize() const { return size_; }
 
 private:
 
-    int regA_{0};
-    int regB_{0};
-    int regC_{0};
-
+    int64_t regA_{0};
+    int64_t regB_{0};
+    int64_t regC_{0};
     int iPtr_ {0};
 
     std::vector<int> program_;
