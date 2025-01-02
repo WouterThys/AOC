@@ -22,6 +22,7 @@ add_executable(day_14 day14/main.cpp)
 add_executable(day_15 day15/main.cpp)
 add_executable(day_16 day16/main.cpp)
 add_executable(day_17 day17/main.cpp)
+add_executable(day_18 day18/main.cpp)
 
 add_executable(day_25 day25/main.cpp)
 
@@ -29,4 +30,4 @@ add_executable(day_25 day25/main.cpp)
 
 
 
-add_executable(sol day17/sol.cpp)
+#add_executable(sol day17/sol.cpp)
