@@ -59,7 +59,7 @@ struct Position
     uint16_t x;
     uint16_t y;
     bool corrupt_ = false;
-    bool visited_ = false;
+    mutable bool visited_ = false;
 
     Position() : x{0}, y{0}
     {
@@ -122,8 +122,8 @@ struct Position
 /// https://github.com/ra101/Maze-Solver-Cpp/blob/master/dijkstra.h
 struct Node 
 {
-    uint16_t dist;
-    uint16_t pos;
+    uint32_t dist;
+    uint32_t pos;
 };
 
 bool operator<(const Node& n1, const Node& n2) 
@@ -186,8 +186,9 @@ public:
         std::vector<uint32_t> dist(W*H, UINT32_MAX);
 
         // Insert source itself in priority queue and initialize its distance as 0.
-        q.push({ .dist=0, .pos=&src });
-        dist[index(src.x,src.y)] = 0;
+        auto ndx = index(src.x,src.y);
+        q.push({ .dist=0, .pos=ndx });
+        dist[ndx] = 0;
 
         /* Looping till priority queue becomes empty (or all distances are not finalized) */
         while (!q.empty()) 
@@ -208,8 +209,8 @@ public:
             // Loop neighbors
             for (int i = 0; i < 4; i++) 
             {
-                uint16_t nx = u.pos->x + rowNum[i];
-                uint16_t ny = u.pos->y + colNum[i];
+                uint16_t nx = pos.x + rowNum[i];
+                uint16_t ny = pos.y + colNum[i];
 
                 if (valid(nx, ny)) 
                 {
@@ -227,11 +228,11 @@ public:
                         }
 
                         // If there is shorted path to v through u.
-                        if (dist[nInd] > dist[uNdx] + 1) 
+                        if (dist[nInd] > dist[node.pos] + 1) 
                         {
                             // Updating distance of v
-                            dist[nInd] = dist[uNdx] + 1;
-                            q.push({ .dist=dist[nInd], .pos=&nPos });
+                            dist[nInd] = dist[node.pos] + 1;
+                            q.push({ .dist=dist[nInd], .pos=nInd });
                         }
                     }
                 }
