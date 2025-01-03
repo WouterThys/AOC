@@ -7,16 +7,17 @@
 
 #include <memory>
 #include <vector>
+#include <queue>
 #include <unordered_map>
 #include <regex>
 #include <cctype>
 
-#define TEST
+//#define TEST
 
 #ifdef TEST
 #define DATA "test.txt"
 #define W 8
-#define H 4
+#define H W
 #else
 #define DATA "data.txt"
 #define W 45
@@ -26,7 +27,7 @@
 #define ASCII_TO_CHAR(v) (v-48)
 #define CHAR_TO_ASCII(c) (c+48)
 
-static uint16_t index(uint16_t x, uint16_t y) 
+static uint32_t index(uint16_t x, uint16_t y) 
 {
     return (x + (y * W));
 }
@@ -41,6 +42,17 @@ enum Direction
 {
     L, R, U, D
 };
+
+
+/* Movements for all directions, use combination like
+    for (i..4) {
+     x = rowNum[i];
+     y = colNum[i];
+    }
+ */
+constexpr int rowNum[] = {-1,  0,  1,  0};
+constexpr int colNum[] = { 0, -1,  0,  1};
+                         //L   U   R   D
 
 struct Location {
 
@@ -62,8 +74,17 @@ struct Location {
 
 struct Node 
 {
-
+    uint32_t dist;
+    uint32_t pos;
 };
+
+bool operator<(const Node& n1, const Node& n2) 
+{
+    /* Priority queue always returns highest value so sort from high -> low */
+    if (n1.dist != n2.dist) return n1.dist > n2.dist;
+    if (n1.pos != n2.pos) return n1.pos > n2.pos;
+    return false;
+}
 
 class Map 
 {
@@ -85,12 +106,6 @@ public:
 
                 auto i = index(x, y);
 
-                // To use the test values
-                if (v == '.') 
-                {
-                    v = '1';
-                }
-
                 data[i].x = x;
                 data[i].y = y;
                 data[i].h = ASCII_TO_CHAR(v);
@@ -108,17 +123,14 @@ public:
         }
     }
 
-    void run()
+    void run(bool distinctScore)
     {
         int sum = 0;
         for (const auto index : startIndexes) 
         {
-            auto& loc = data[index];
             int score = 0;
-            walkRoute(loc, score);
-#ifdef TEST
-            std::cout << "Score at [" << loc.x << "," << loc.y << "] is " << score << std::endl;
-#endif
+            walkRoute(index, score, distinctScore);
+
             reset();
 
             sum += score;
@@ -127,48 +139,59 @@ public:
         std::cout << "Total score: " << sum << std::endl;
     }
 
-    void walkRoute(Location& loc, int& score)
+    void walkRoute(uint32_t srcNdx, int& score, bool distinctScore)
     {
 
+        std::priority_queue<Node> q;
+        std::vector<uint32_t> dist(W*H, UINT32_MAX);
+        std::vector<uint32_t> found;
 
-    }
+        const auto& src = data[srcNdx];
+        dist[srcNdx] = 0;
 
-    void findNeighbours(const Location& loc, uint8_t height, std::vector<uint16_t>& neighbours) const
-    {
-        // Left
-        if (loc.x > 0) 
+        q.push({ .dist=0, .pos=srcNdx });
+
+        while (!q.empty()) 
         {
-            auto i = index(loc.x-1, loc.y);
-            if (data[i].h == height) 
+            const auto node = q.top();
+            const auto pos = data[node.pos];
+            q.pop();
+
+            if (pos.h == 9) 
             {
-                neighbours.push_back(i);
+                if (distinctScore) 
+                {
+                    // Only when not already been here increment
+                    if (std::find(found.begin(), found.end(), node.pos) == found.end()) 
+                    {
+                        // Increment score, do not add to queue because this is dst
+                        score++;
+                        found.push_back(node.pos);
+                    }
+                }
+                else 
+                {
+                    score++;
+                }
             }
-        }
-        // Up
-        if (loc.y > 0) 
-        {
-            auto i = index(loc.x, loc.y-1);
-            if (data[i].h == height) 
+
+            for (int i = 0; i < 4; i++) 
             {
-                neighbours.push_back(i);
-            }
-        }
-        // Right
-        if (loc.x < W) 
-        {
-            auto i = index(loc.x+1, loc.y);
-            if (data[i].h == height) 
-            {
-                neighbours.push_back(i);
-            }
-        }
-        // Down
-        if (loc.y < H) 
-        {
-            auto i = index(loc.x, loc.y+1);
-            if (data[i].h == height) 
-            {
-                neighbours.push_back(i);
+                uint16_t nx = pos.x + rowNum[i];
+                uint16_t ny = pos.y + colNum[i];
+
+                if (valid(nx, ny)) 
+                {
+                    const auto  nNdx = index(nx, ny);
+                    const auto& nPos = data[nNdx];
+
+                    if (nPos.h == (pos.h + 1)) 
+                    {
+                        // Only move on when h + 1
+                        dist[nNdx] = node.dist + 1;
+                        q.push({ .dist=dist[nNdx], .pos=nNdx });
+                    }
+                }
             }
         }
     }
@@ -194,8 +217,8 @@ public:
 private:
 
     std::unique_ptr<Location[]> data;
-    std::vector<uint16_t> startIndexes;
-    std::vector<uint16_t> endIndexes;
+    std::vector<uint32_t> startIndexes;
+    std::vector<uint32_t> endIndexes;
 
 };
 
@@ -223,10 +246,7 @@ void part1()
 #ifdef TEST
     map->print();
 #endif
-
-    map->run();
-
-
+    map->run(true);
 }
 
 void part2() 
@@ -235,7 +255,7 @@ void part2()
 #ifdef TEST
     map->print();
 #endif
-
+    map->run(false);
 }
 
 int main (int argc, char* argv[]) 
@@ -245,9 +265,8 @@ int main (int argc, char* argv[])
     std::cout << "TEST TEST TEST" << std::endl;
 #endif
 
-    part1();
-    //part2();
-
+    //part1();
+    part2();
 
     return 0;
 }
