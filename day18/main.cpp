@@ -15,21 +15,21 @@
 #include <thread>
 #include <functional>
 
-
-
-#define TEST
+//#define TEST
 
 #ifdef TEST
 #define DATA "test.txt"
-#define W 7
+#define W (6+1)
 #define H W
+#define N 12
 #else
 #define DATA "data.txt"
-#define W 70
+#define W (70+1)
 #define H W
+#define N 1024
 #endif
 
-static uint16_t index(uint16_t x, uint16_t y) 
+static uint32_t index(uint16_t x, uint16_t y) 
 {
     return (x + (y * W));
 }
@@ -92,18 +92,9 @@ struct Position
         return corrupt_;
     }
 
-    bool isVisited() const 
-    {
-        return visited_;
-    }
-
     char print() const
     {
-        if (visited_) 
-        {
-            return 'x';
-        }
-        else if (corrupt_) 
+        if (corrupt_) 
         {
             return '#';
         }
@@ -115,14 +106,13 @@ struct Position
         corrupt_ = true;
     }
 
-    void visit() 
+    void visit() const
     {
         visited_ = true;
     }
 
     void clear() 
     {
-        visited_ = false;
         corrupt_ = false;
     }
 
@@ -133,12 +123,15 @@ struct Position
 struct Node 
 {
     uint16_t dist;
-    Position* pos;
+    uint16_t pos;
 };
 
 bool operator<(const Node& n1, const Node& n2) 
 {
-    return n1.dist < n2.dist;
+    /* Priority queue always returns highest value so sort from high -> low */
+    if (n1.dist != n2.dist) return n1.dist > n2.dist;
+    if (n1.pos != n2.pos) return n1.pos > n2.pos;
+    return false;
 }
 
 
@@ -180,28 +173,17 @@ public:
         }
     }
 
-    void solve() 
+    int dijkstra() 
     {
-        makeCorrupt(12);
 
-        dijkstra(data[0], data[(W*H)-1]);
+        Position& src = data[0];
+        Position& dst = data[(W*H)-1];
 
-        
-#ifdef TEST
-            system("clear");
-            print();
-            std::cout << std::endl;
-#endif
-        
-    }
-
-    void dijkstra(Position& src, Position& dst) 
-    {
-        // A queue sorting the nodes by distance
-        std::priority_queue<Node> q; // Node - iPair<dist,id>
+        // A queue
+        std::priority_queue<Node> q;
 
         // Create a vector for distances and initialize all distances as infinite (INT16_MAX)
-        std::vector<uint16_t> dist(W*H, INT16_MAX);
+        std::vector<uint32_t> dist(W*H, UINT32_MAX);
 
         // Insert source itself in priority queue and initialize its distance as 0.
         q.push({ .dist=0, .pos=&src });
@@ -213,16 +195,15 @@ public:
 
 #ifdef TEST
             system("clear");
-            print();
+            print(&dist);
             std::cout << std::endl;
 #endif
 
             // The first vertex in pair is the minimum distance vertex, extract it from priority queue.
-            auto& u = q.top();
-            u.pos->visit();
+            const auto& node = q.top();
+            const auto& pos = data[node.pos];
+            pos.visit();
             q.pop();
-
-            auto uNdx = index(u.pos->x, u.pos->y);
 
             // Loop neighbors
             for (int i = 0; i < 4; i++) 
@@ -235,8 +216,16 @@ public:
                     auto nInd = index(nx, ny);
                     auto& nPos = data[nInd];
 
-                    if (!nPos.isVisited() && !nPos.isCorrupt()) 
+                    if (!nPos.isCorrupt()) 
                     {
+                        // Check if end reached
+                        if (nPos.x == dst.x && nPos.y == dst.y) 
+                        {
+                            // End reached!!
+                            std::cout << "Early out" << std::endl;
+                            return dist[node.pos] + 1;
+                        }
+
                         // If there is shorted path to v through u.
                         if (dist[nInd] > dist[uNdx] + 1) 
                         {
@@ -249,30 +238,65 @@ public:
             }
         }
 
+        return -1;
     }
 
     /// @brief Apply first x corruptions to the memory
     /// @param x number of corruptions to corrupt (when less than corruption list)
     void makeCorrupt(int x) 
     {
-        for (int i = 0; i < x && i < incoming.size(); i++) 
+        for (int i = 0; i <= x && i < incoming.size(); i++) 
         {
             const auto& c = incoming[i];
             data[index(c.x, c.y)].corrupt();
         }
     }
 
-    void print() const 
+    void print(std::vector<uint32_t>* dist) const 
     {
         for (uint16_t y = 0; y < H; y++) 
         {
             for (uint16_t x = 0; x < W; x++) 
             {
                 auto i = index(x, y);
-                std::cout << data[i].print() << "";
+                if (dist) 
+                {
+                    auto d = dist->at(i);
+                    if (d < UINT32_MAX) 
+                    {
+                        std::cout << "O ";        
+                        // if (d < 10) 
+                        // {
+                        //     std::cout << d << " ";
+                        // }
+                        // else 
+                        // {
+                        //     std::cout << d << "";
+                        // }
+                    }
+                    else 
+                    {
+                        std::cout << data[i].print() << " ";
+                    }
+                }
+                else 
+                {
+                    std::cout << data[i].print() << " ";
+                }
             }
             std::cout << std::endl;
         }
+    }
+
+    size_t max() const 
+    {
+        return incoming.size();
+    }
+
+    void printBlock(int i) 
+    {
+        const auto& p = incoming.at(i);
+        std::cout << "[" << p.x << "," << p.y << "]" << std::endl;
     }
 
 private:
@@ -304,13 +328,31 @@ std::unique_ptr<Memory> read_input(std::string filename)
 void part1() 
 {
     auto ptr = read_input("../day18/" DATA);
-    ptr->solve();
+    ptr->makeCorrupt(N);
+
+    int res = ptr->dijkstra();
+    std::cout << "Needed " << res << " steps" << std::endl;
 }
 
 void part2() 
 {
     auto ptr = read_input("../day18/" DATA);
-    ptr->solve();  
+
+    // Naive
+
+    for (int i = N+1; i < ptr->max(); ++i) 
+    {
+        ptr->makeCorrupt(i);
+
+        int res = ptr->dijkstra();
+        if (res < 0) 
+        {
+            std::cout << "First block at " << i << " ";
+            ptr->printBlock(i);
+            return;
+        }
+    }
+
 }
 
 int main(int argc, char* argv[]) 
@@ -320,8 +362,8 @@ int main(int argc, char* argv[])
     std::cout  << "TEST TEST TEST" << std::endl;
 #endif
 
-    part1();
-    //part2();
+    //part1();
+    part2();
 
     return 0;
 }

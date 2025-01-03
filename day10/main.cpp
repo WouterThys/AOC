@@ -39,7 +39,7 @@ static bool valid(uint16_t x, uint16_t y)
 /* could have made this smarter with 90 degrees further always ++ U -> R -> ...*/
 enum Direction
 {
-    L, R, U, D, X
+    L, R, U, D
 };
 
 struct Location {
@@ -47,8 +47,6 @@ struct Location {
     uint16_t x;
     uint16_t y;
     uint8_t h;
-
-    bool visited = false;
 
     bool isValid() const 
     {
@@ -60,20 +58,10 @@ struct Location {
         return CHAR_TO_ASCII(h);
     }
 
-    void visit() 
-    {
-        visited = true;
-    }
+};
 
-    bool isVisited() const 
-    {
-        return visited;
-    }
-
-    void reset() 
-    {
-        visited = false;
-    }
+struct Node 
+{
 
 };
 
@@ -141,34 +129,7 @@ public:
 
     void walkRoute(Location& loc, int& score)
     {
-        auto neighbours = std::vector<uint16_t>();
-        findNeighbours(loc, loc.h+1, neighbours);
 
-        if (neighbours.size() > 0) 
-        {
-            for (auto& nbIndex : neighbours) 
-            {
-                auto& nb = data[nbIndex];
-                if (nb.h == 9) 
-                {
-                    if (!nb.isVisited()) 
-                    {
-                        // done
-                        nb.visit();
-                        score++;
-                    }
-                }
-                else 
-                {
-                    // keep on walking
-                    walkRoute(nb, score);
-                }
-            }
-        }
-        else 
-        {
-            // Not arrived at a '9'
-        }
 
     }
 
@@ -214,10 +175,7 @@ public:
 
     void reset() 
     {
-        for (uint16_t i : endIndexes) 
-        {
-            data[i].reset();
-        }
+
     }
 
     void print() const 
