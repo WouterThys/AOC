@@ -102,32 +102,53 @@ public:
     void solve() 
     {
         size_t total = 0;
-        for (auto& pattern : desired) 
+        std::vector<Towel> towels;
+        for (auto& d : desired) 
         {
+            // Only use the ones that are contained
+            towels.clear();
+            for (const auto& t : existing) 
+            {
+                if (d.pattern.find(t.pattern) != std::string::npos) 
+                {
+                    towels.push_back(t);
+                }
+            }
+
+            std::cout << "Searching on " << d.pattern << " with " << towels.size() << "/" << existing.size() << " towels" << std::endl;
+
             int count = 0;
-            search(pattern, 0, count);
-            std::cout << pattern.pattern << " has " << count << " possible" << std::endl;
-            total += count;
+            if (search(d.pattern, d.size, 0, towels, count)) 
+            {
+                total += count;   
+            }
+            //std::cout << d.pattern << " has " << count << " possible" << std::endl;
         }
 
         std::cout << "There are " << total << " possible" << std::endl;
     }
 
-    void search(Towel& s, size_t ptr, int& count) 
+    bool search(std::string s, const size_t size, size_t ptr, std::vector<Towel>& towels, int& total) 
     {
-        if (ptr >= s.size) 
+        if (ptr >= size) 
         {
-            count++;
-            return;
+            total++;
+            return true;
         }
-        for (uint16_t i = 0; i < existing.size(); i++) 
+        for (uint16_t i = 0; i < towels.size(); i++) 
         {
-            const auto& towel = existing[i];
-            if (match(s.pattern, towel.pattern, ptr)) 
+            const auto& towel = towels[i];
+            if (match(s, towel.pattern, ptr)) 
             {
-                search(s, ptr + towel.size, count);
+                auto res = search(s, size, ptr + towel.size, towels, total);
+                if (res)
+                {
+                    return true;
+                }
             }
         }
+
+        return false;
     }
 
     bool match(const std::string& input, const std::string& with, size_t start) 
