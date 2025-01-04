@@ -118,7 +118,7 @@ public:
             std::cout << "Searching on " << d.pattern << " with " << towels.size() << "/" << existing.size() << " towels" << std::endl;
 
             int count = 0;
-            if (search(d.pattern, d.size, 0, towels, count)) 
+            if (search(d.pattern, d.size, towels, count)) 
             {
                 total += count;   
             }
@@ -128,9 +128,9 @@ public:
         std::cout << "There are " << total << " possible" << std::endl;
     }
 
-    bool search(std::string s, const size_t size, size_t ptr, std::vector<Towel>& towels, int& total) 
+    bool search(std::string s, const size_t size, std::vector<Towel>& towels, int& total) 
     {
-        if (ptr >= size) 
+        if (s.empty()) 
         {
             total++;
             return true;
@@ -138,9 +138,10 @@ public:
         for (uint16_t i = 0; i < towels.size(); i++) 
         {
             const auto& towel = towels[i];
-            if (match(s, towel.pattern, ptr)) 
+            if (match(s, towel.pattern)) 
             {
-                auto res = search(s, size, ptr + towel.size, towels, total);
+                auto newS = s.substr(towel.size);
+                auto res = search(newS, size, towels, total);
                 if (res)
                 {
                     return true;
@@ -151,12 +152,12 @@ public:
         return false;
     }
 
-    bool match(const std::string& input, const std::string& with, size_t start) 
+    bool match(const std::string& input, const std::string& with) 
     {
         size_t match = 0;
-        for (size_t i = 0; i < input.length()-start && i < with.length(); i++) 
+        for (size_t i = 0; i < input.length() && i < with.length(); i++) 
         {
-            if (input[start + i] != with[i]) 
+            if (input[i] != with[i]) 
             {
                 return false;
             }
