@@ -127,9 +127,11 @@ struct Node
 
 struct Cheat 
 {
-    uint32_t start;
-    uint32_t wall;
-    uint32_t end;
+    uint32_t start; // Index of cheat start pos
+    uint32_t wall;  // Index of wall pos
+    uint32_t end;   // Index of cheat end pos
+
+    uint32_t dist; // Distance from end
 };
 
 bool operator<(const Node& n1, const Node& n2) 
@@ -199,12 +201,7 @@ public:
         return res;
     }
 
-    uint32_t runCheat(const Cheat& cheat) 
-    {
-        return dijkstra(getStartNdx(), getEndNdx(), false, &cheat);
-    }
-
-    int dijkstra(uint32_t start, uint32_t end, bool findCheats, const Cheat* cheat = nullptr) 
+    int dijkstra(uint32_t start, uint32_t end, bool findCheats) 
     {
         Position& src = data[start];
         Position& dst = data[end];
@@ -226,7 +223,7 @@ public:
 
 #ifdef TEST
             system("clear");
-            print(&dist, cheat);
+            print(&dist);
             std::cout << std::endl;
 #endif
 
@@ -239,41 +236,12 @@ public:
             {
                 checkCheatFromPos(pos, dist);
             }
-            else if (cheat == nullptr) 
+            else
             {
                 // Update route
                 route[node.pos] = node.dist;
             }
 
-            // Check cheat, and if cheat should be applied here
-            if (cheat && node.pos == cheat->start) 
-            {
-                const auto  cNdx = cheat->end;
-                const auto& cPos = data[cNdx];
-
-                /* ./day_20  11.59s user 0.01s system 99% cpu 11.634 total */
-
-                // // Check if end reached
-                // if (cPos.x == dst.x && cPos.y == dst.y) 
-                // {
-                //     // End reached!!
-                //     std::cout << "Early out with cheat!!!!" << std::endl;
-                //     return dist[node.pos] + 1;
-                // }
-
-                // // This should always be true?
-                // if (dist[cNdx] > dist[node.pos] + 1) 
-                // {
-                //     // Updating distance of v
-                //     dist[cNdx] = dist[node.pos] + 1;
-                //     q.push({ .dist=dist[cNdx], .pos=cNdx });
-                // }
-
-                /* Double as fast: ./day_20  5.59s user 0.01s system 99% cpu 5.606 total */
-                return dist[node.pos] + route[cNdx];
-            }
-            else 
-            {
                 // Loop neighbors
                 for (int i = 0; i < 4; i++) 
                 {
@@ -305,7 +273,6 @@ public:
                         }
                     }
                 }
-            }
         }
 
         return -1;
@@ -353,7 +320,8 @@ public:
                             if (cDist > pDist) 
                             {
                                 // Valid cheat!!
-                                cheatPositions.push_back(Cheat{.start=pNdx, .wall=wNdx, .end=cNdx});
+                                auto totalDist = pDist + route[cNdx]; // Already walked + route from here + 1 for passing the wall
+                                cheatPositions.push_back(Cheat{.start=pNdx, .wall=wNdx, .end=cNdx, .dist=totalDist});
                             }
                         }
                     }
@@ -478,29 +446,31 @@ void part1()
 {
     auto ptr = read_input("../day20/" DATA);
     // Run backwards to set route
+    int withoutCheat = ptr->findRoute();
     ptr->initCheats();
 
-    int withoutCheat = ptr->findRoute();
     int save = 0;
-    int time = 0;
+    // int time = 0;
     std::map<uint32_t, uint32_t> costs;
 
     std::cout << "No cheats: " << withoutCheat << std::endl;
-
     const auto& cheats = ptr->getCheatPositions();
-    //std::vector<Cheat> cheats { Cheat{.start=index(8,7), .wall=index(8,8), .end=index(8,9)} };
-    //std::vector<Cheat> cheats { Cheat{.start=index(7,1), .wall=index(8,1), .end=index(9,1)} };
+    std::cout << "# cheats: " << cheats.size() << std::endl;
+
+    // //std::vector<Cheat> cheats { Cheat{.start=index(8,7), .wall=index(8,8), .end=index(8,9)} };
+    // //std::vector<Cheat> cheats { Cheat{.start=index(7,1), .wall=index(8,1), .end=index(9,1)} };
     for (const auto& cheat : cheats) 
     {
-        time = ptr->runCheat(cheat) + 1;
-        save = withoutCheat - time;
+        save = withoutCheat - cheat.dist - 2;
         costs[save]++;
     }
 
     int total = 0;
     for (const auto& pair : costs) 
     {
-        //std::cout << "There are " << pair.second << " cheats that save " << pair.first << " picoseconds." << std::endl;
+#ifdef TEST
+        std::cout << "There are " << pair.second << " cheats that save " << pair.first << " picoseconds." << std::endl;
+#endif
         if (pair.first >= 100) 
         {
             total += pair.second;
