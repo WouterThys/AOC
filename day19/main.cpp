@@ -8,6 +8,8 @@
 #include <vector>
 #include <queue>
 #include <set>
+#include <unordered_map>
+
 #include <memory>
 #include <regex>
 
@@ -102,6 +104,7 @@ public:
     void solve() 
     {
         size_t total = 0;
+        size_t possible = 0;
         std::vector<Towel> towels;
         for (auto& d : desired) 
         {
@@ -115,41 +118,49 @@ public:
                 }
             }
 
-            std::cout << "Searching on " << d.pattern << " with " << towels.size() << "/" << existing.size() << " towels" << std::endl;
+            //std::cout << "Searching on " << d.pattern << " with " << towels.size() << "/" << existing.size() << " towels" << std::endl;
 
-            int count = 0;
-            if (search(d.pattern, d.size, towels, count)) 
-            {
-                total += count;   
-            }
-            //std::cout << d.pattern << " has " << count << " possible" << std::endl;
+            possible = search(d.pattern, d.size, towels);
+            total += possible;
+            std::cout << "Possible designs: " << possible << std::endl;
         }
 
-        std::cout << "There are " << total << " possible" << std::endl;
+        std::cout << "Possible designs: " << total << std::endl;
     }
 
-    bool search(std::string s, const size_t size, std::vector<Towel>& towels, int& total) 
+    int search(std::string s, const size_t size, std::vector<Towel>& towels) 
     {
+        static std::unordered_map<std::string, int> cache;
+
         if (s.empty()) 
         {
-            total++;
-            return true;
+            return 1;
         }
+
+        if (cache.find(s) != cache.end())
+        {
+            //std::cout << "using cache" << std::endl;
+            return cache[s];
+        }
+
+        int result = 0;
         for (uint16_t i = 0; i < towels.size(); i++) 
         {
             const auto& towel = towels[i];
             if (match(s, towel.pattern)) 
             {
                 auto newS = s.substr(towel.size);
-                auto res = search(newS, size, towels, total);
-                if (res)
-                {
-                    return true;
-                }
+                result += search(newS, size, towels);
+                // if (result > 0)
+                // {
+                //     return result;
+                // }
             }
         }
 
-        return false;
+        cache[s] = result;
+
+        return result;
     }
 
     bool match(const std::string& input, const std::string& with) 
