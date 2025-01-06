@@ -18,7 +18,7 @@
 #include <thread>
 #include <functional>
 
-//#define TEST
+#define TEST
 
 #ifdef TEST
 #define DATA "test.txt"
@@ -142,6 +142,9 @@ bool operator<(const Node& n1, const Node& n2)
     return false;
 }
 
+#define DEFAULT_CHECK [](const auto& p){ return !p.isWall(); }
+#define DEFAULT_STOP [&](const auto& p){ return p.x == dst.x && p.y == dst.y; }
+
 class Maze 
 {
 public:
@@ -187,12 +190,48 @@ public:
     void initCheats() 
     {
         cheatPositions.clear();
-        dijkstra(getStartNdx(), getEndNdx(), true);
+
+        auto f = [&](const auto& node, auto& dist)
+        {
+            checkCheatFromPos(data[node.pos], dist);
+        };
+
+        Position& dst = data[getEndNdx()];
+
+        dijkstra(getStartNdx(), f, DEFAULT_CHECK, [&](const auto& p){ return p.x == dst.x && p.y == dst.y; });
+    }
+
+    void initCheats2() 
+    {
+        cheatPositions.clear();
+
+        auto f = [&](const auto& node, auto& dist)
+        {
+            checkCheatFromPos(data[node.pos], dist);
+        };
+
+
+        // Loop every point on the route and find the cheats at that point
+        for (const auto& ndx : route) 
+        {
+            const auto& pos = data[ndx];
+
+
+        }
+
+        
     }
 
     uint32_t findRoute() 
     {
-        auto res = dijkstra(getEndNdx(), getStartNdx(), false);
+        auto f = [&](const auto& node, auto& dist)
+        {
+            route[node.pos] = node.dist;
+        };
+
+        Position& dst = data[getStartNdx()];
+
+        auto res = dijkstra(getEndNdx(), f, DEFAULT_CHECK, [&](const auto& p){ return p.x == dst.x && p.y == dst.y; });
 #ifdef TEST
         system("clear");
         print(&route);
@@ -201,10 +240,14 @@ public:
         return res;
     }
 
-    int dijkstra(uint32_t start, uint32_t end, bool findCheats) 
+    int dijkstra(uint32_t start
+        , const std::function<void(const Node&, std::vector<uint32_t>&)>& func /* do this for every position on the route */
+        , const std::function<bool(const Position&)>& check /* True when this is a valid position to move to */
+        , const std::function<bool(const Position&)>& stop  /* True when this is the stop condition */
+        ) 
     {
         Position& src = data[start];
-        Position& dst = data[end];
+        //Position& dst = data[end];
 
         // A queue
         std::priority_queue<Node> q;
@@ -232,47 +275,39 @@ public:
             const auto& pos = data[node.pos];
             q.pop();
 
-            if (findCheats) 
-            {
-                checkCheatFromPos(pos, dist);
-            }
-            else
-            {
-                // Update route
-                route[node.pos] = node.dist;
-            }
+            func(node, dist);
 
-                // Loop neighbors
-                for (int i = 0; i < 4; i++) 
+            // Loop neighbors
+            for (int i = 0; i < 4; i++) 
+            {
+                uint16_t nx = pos.x + rowNum[i];
+                uint16_t ny = pos.y + colNum[i];
+
+                if (valid(nx, ny)) 
                 {
-                    uint16_t nx = pos.x + rowNum[i];
-                    uint16_t ny = pos.y + colNum[i];
+                    auto nInd = index(nx, ny);
+                    auto& nPos = data[nInd];
 
-                    if (valid(nx, ny)) 
+                    if (check(nPos)) 
                     {
-                        auto nInd = index(nx, ny);
-                        auto& nPos = data[nInd];
-
-                        if (!nPos.isWall()) 
+                        // Check if end reached
+                        if (stop(nPos)) 
+                        //if (nPos.x == dst.x && nPos.y == dst.y) 
                         {
-                            // Check if end reached
-                            if (nPos.x == dst.x && nPos.y == dst.y) 
-                            {
-                                // End reached!!
-                                //std::cout << "Early out" << std::endl;
-                                return dist[node.pos] + 1;
-                            }
+                            // End reached!!
+                            return dist[node.pos] + 1;
+                        }
 
-                            // If there is shorted path to v through u.
-                            if (dist[nInd] > dist[node.pos] + 1) 
-                            {
-                                // Updating distance of v
-                                dist[nInd] = dist[node.pos] + 1;
-                                q.push({ .dist=dist[nInd], .pos=nInd });
-                            }
+                        // If there is shorted path to v through u.
+                        if (dist[nInd] > dist[node.pos] + 1) 
+                        {
+                            // Updating distance of v
+                            dist[nInd] = dist[node.pos] + 1;
+                            q.push({ .dist=dist[nInd], .pos=nInd });
                         }
                     }
                 }
+            }
         }
 
         return -1;
@@ -457,8 +492,6 @@ void part1()
     const auto& cheats = ptr->getCheatPositions();
     std::cout << "# cheats: " << cheats.size() << std::endl;
 
-    // //std::vector<Cheat> cheats { Cheat{.start=index(8,7), .wall=index(8,8), .end=index(8,9)} };
-    // //std::vector<Cheat> cheats { Cheat{.start=index(7,1), .wall=index(8,1), .end=index(9,1)} };
     for (const auto& cheat : cheats) 
     {
         save = withoutCheat - cheat.dist - 2;
@@ -485,18 +518,17 @@ void part2()
 {
     auto ptr = read_input("../day20/" DATA);
 
-    // Naive
+    // Run backwards to set route
+    int withoutCheat = ptr->findRoute();
+    ptr->initCheats2();
 
-    // for (int i = N+1; i < ptr->max(); ++i) 
-    // {
-    //     int res = ptr->dijkstra();
-    //     if (res < 0) 
-    //     {
-    //         std::cout << "First block at " << i << " ";
-    //         ptr->printBlock(i);
-    //         return;
-    //     }
-    // }
+    int save = 0;
+    // int time = 0;
+    std::map<uint32_t, uint32_t> costs;
+
+    std::cout << "No cheats: " << withoutCheat << std::endl;
+    const auto& cheats = ptr->getCheatPositions();
+    std::cout << "# cheats: " << cheats.size() << std::endl;
 
 }
 
