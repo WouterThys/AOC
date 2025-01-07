@@ -18,7 +18,7 @@
 #include <thread>
 #include <functional>
 
-#define TEST
+//#define TEST
 
 #ifdef TEST
 #define DATA "test.txt"
@@ -117,6 +117,11 @@ struct Position
 
 };
 
+uint32_t manhattanDistance(const Position& p1, const Position& p2) 
+{
+    return std::abs(p1.x - p2.x) + std::abs(p1.y - p2.y);
+}
+
 /// @brief Used for Dijkstra algo
 /// https://github.com/ra101/Maze-Solver-Cpp/blob/master/dijkstra.h
 struct Node 
@@ -183,65 +188,102 @@ public:
                 read_pos++;
             }
         }
-    
-        route = std::vector<uint32_t>(W*H, UINT32_MAX);
     }
 
     void initCheats() 
     {
-        cheatPositions.clear();
-
         auto f = [&](const auto& node, auto& dist)
         {
             checkCheatFromPos(data[node.pos], dist);
+            return true;
         };
 
         Position& dst = data[getEndNdx()];
 
-        dijkstra(getStartNdx(), f, DEFAULT_CHECK, [&](const auto& p){ return p.x == dst.x && p.y == dst.y; });
+        dijkstra(getStartNdx(), f, DEFAULT_CHECK, DEFAULT_STOP);
     }
 
-    void initCheats2() 
+    void initCheats2(const int d, const int routeLength, const int treshold, std::map<uint32_t, uint32_t>& savings) 
     {
-        cheatPositions.clear();
+#ifdef TEST
+        clearPrint();
+#endif
 
-        auto f = [&](const auto& node, auto& dist)
+        for (const auto& routePair : routeMap) 
         {
-            checkCheatFromPos(data[node.pos], dist);
-        };
-
-
-        // Loop every point on the route and find the cheats at that point
-        for (const auto& ndx : route) 
-        {
+            const uint32_t ndx = routePair.first;   // Index of the route
+            const uint32_t dist = routePair.second; // Dist to the E from this point
             const auto& pos = data[ndx];
+            
+            for (int dx = -d; dx <= d; ++dx) 
+            {
+                for (int dy = -(d - std::abs(dx)); dy <= (d - std::abs(dx)); ++dy) 
+                {
+                    int nx = pos.x + dx;
+                    int ny = pos.y + dy;
 
+                    // Check if the point is within grid bounds
+                    if (nx >= 0 && nx < W && ny >= 0 && ny < H) 
+                    {
+                        const auto  cNdx = index(nx, ny);
+                        const auto& cPos = data[cNdx];
+                        if (cPos.isEmpty()) 
+                        {
 
+#ifdef TEST
+/*
+                            if (ndx == startIndex) 
+                            {
+                                if (cNdx == index(3, 7)) 
+                                {
+                                    Cheat c{.start=ndx, .wall=0, .end=cNdx, .dist=0 };
+                                    clearPrint(&c);
+                                    int mand = manhattanDistance(pos, cPos);
+                                    int save = dist - routeMap[cNdx] - mand;
+                                    std::cout << "Save " << save << std::endl;
+                                }
+                            }
+*/
+#endif
+
+                            // Distance is the current
+                            int mand = manhattanDistance(pos, cPos);
+                            int save = dist - routeMap[cNdx] - mand;
+                            if (save >= treshold) 
+                            {
+                                savings[save]++;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-        
     }
 
     uint32_t findRoute() 
     {
         auto f = [&](const auto& node, auto& dist)
         {
-            route[node.pos] = node.dist;
+            routeMap[node.pos] = node.dist;
+            return true;
         };
 
         Position& dst = data[getStartNdx()];
 
-        auto res = dijkstra(getEndNdx(), f, DEFAULT_CHECK, [&](const auto& p){ return p.x == dst.x && p.y == dst.y; });
+        auto res = dijkstra(getEndNdx(), f, DEFAULT_CHECK, DEFAULT_STOP);
 #ifdef TEST
-        system("clear");
-        print(&route);
-        std::cout << std::endl;
+        clearPrint();
 #endif
+
+        // Add startpoint to route
+        routeMap[startIndex] = res;
+
         return res;
     }
 
     int dijkstra(uint32_t start
-        , const std::function<void(const Node&, std::vector<uint32_t>&)>& func /* do this for every position on the route */
+        , const std::function<bool(const Node&, std::vector<uint32_t>&)>& func /* do this for every position on the route */
         , const std::function<bool(const Position&)>& check /* True when this is a valid position to move to */
         , const std::function<bool(const Position&)>& stop  /* True when this is the stop condition */
         ) 
@@ -265,9 +307,7 @@ public:
         {
 
 #ifdef TEST
-            system("clear");
-            print(&dist);
-            std::cout << std::endl;
+            clearPrint();
 #endif
 
             // The first vertex in pair is the minimum distance vertex, extract it from priority queue.
@@ -355,8 +395,8 @@ public:
                             if (cDist > pDist) 
                             {
                                 // Valid cheat!!
-                                auto totalDist = pDist + route[cNdx]; // Already walked + route from here + 1 for passing the wall
-                                cheatPositions.push_back(Cheat{.start=pNdx, .wall=wNdx, .end=cNdx, .dist=totalDist});
+                                auto totalDist = pDist + routeMap[cNdx]; // Already walked + route from here + 1 for passing the wall
+                                cheats.push_back(Cheat{.start=pNdx, .wall=wNdx, .end=cNdx, .dist=totalDist});
                             }
                         }
                     }
@@ -367,12 +407,12 @@ public:
 
     size_t getNrCheats() const 
     {
-        return cheatPositions.size();
+        return cheats.size();
     }
 
     std::vector<Cheat>& getCheatPositions() 
     {
-        return cheatPositions;
+        return cheats;
     } 
 
     void setCheat(uint32_t pos) 
@@ -385,7 +425,14 @@ public:
         data[pos].reset();
     }
 
-    void print(std::vector<uint32_t>* dist, const Cheat* cheat = nullptr) const 
+    void clearPrint(const Cheat* cheat = nullptr) const 
+    {
+        system("clear");
+        print(cheat);
+        std::cout << std::endl;
+    }
+
+    void print(const Cheat* cheat = nullptr) const 
     {
         for (uint16_t y = 0; y < H; y++) 
         {
@@ -408,29 +455,28 @@ public:
                 {
                     std::cout << "2 ";
                 }
-                else if (dist) 
+                else
                 {
-                    auto d = dist->at(i);
-                    if (d < UINT32_MAX) 
+                    auto it = routeMap.find(i);
+                    if (it != routeMap.end()) 
                     {
-                        //std::cout << "O ";        
-                        if (d < 10) 
+                        if (it->second < UINT32_MAX) 
                         {
-                            std::cout << d << " ";
-                        }
-                        else 
-                        {
-                            std::cout << d << "";
+                            std::cout << "O ";        
+                            // if (d < 10) 
+                            // {
+                            //     std::cout << d << " ";
+                            // }
+                            // else 
+                            // {
+                            //     std::cout << d << "";
+                            // }
                         }
                     }
                     else 
                     {
                         std::cout << data[i].print() << " ";
                     }
-                }
-                else 
-                {
-                    std::cout << data[i].print() << " ";
                 }
             }
             std::cout << std::endl;
@@ -453,8 +499,9 @@ private:
     uint32_t startIndex{0};
     uint32_t endIndex{0};
 
-    std::vector<uint32_t> route;
-    std::vector<Cheat> cheatPositions; // Map with cheat positions (start -> end)
+    //std::vector<uint32_t> route;
+    std::vector<Cheat> cheats; // Map with cheat positions (start -> end)
+    std::map<uint32_t, uint32_t> routeMap;
     
 };
 
@@ -520,15 +567,25 @@ void part2()
 
     // Run backwards to set route
     int withoutCheat = ptr->findRoute();
-    ptr->initCheats2();
-
-    int save = 0;
-    // int time = 0;
-    std::map<uint32_t, uint32_t> costs;
+    std::map<uint32_t, uint32_t> savings;
 
     std::cout << "No cheats: " << withoutCheat << std::endl;
-    const auto& cheats = ptr->getCheatPositions();
-    std::cout << "# cheats: " << cheats.size() << std::endl;
+#ifdef TEST
+    ptr->initCheats2(20, withoutCheat, 50, savings);
+#else
+    ptr->initCheats2(20, withoutCheat, 100, savings);
+#endif
+
+    int total = 0;
+    for (const auto& pair : savings) 
+    {
+#ifdef TEST
+        std::cout << "There are " << pair.second << " cheats that save " << pair.first << " picoseconds." << std::endl;
+#endif
+        total += pair.second;
+    }
+
+    std::cout << "Total bigger than 100: " << total << std::endl;
 
 }
 
@@ -539,8 +596,8 @@ int main(int argc, char* argv[])
     std::cout  << "TEST TEST TEST" << std::endl;
 #endif
 
-    part1();
-    //part2();
+    //part1();
+    part2();
 
     return 0;
 }
