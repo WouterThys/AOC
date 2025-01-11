@@ -25,6 +25,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # dd_executable(day_18 day18/main.cpp)
 add_executable(day_19 day19/main.cpp)
 add_executable(day_20 day20/main.cpp)
+add_executable(day_21 day21/main.cpp)
 
 add_executable(day_25 day25/main.cpp)
 
