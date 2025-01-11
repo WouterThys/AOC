@@ -29,5 +29,5 @@ add_executable(day_21 day21/main.cpp)
 
 add_executable(day_25 day25/main.cpp)
 
-
+add_executable(day_22 day22/main.cpp)
 #add_executable(sol day19/sol.cpp)
