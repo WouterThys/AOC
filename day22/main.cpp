@@ -174,6 +174,8 @@ public:
         uint64_t resultForSequence = 0;
         uint16_t seqAsNum = 0;
 
+        std::set<uint16_t> allSequences;
+
         for (const auto& buyer : buyers)
         {
             for (int i = 4; i < N; i++) 
@@ -187,19 +189,28 @@ public:
 
                 seqAsNum = (sequence[0] * 1000) + (sequence[1] * 100) + (sequence[2] * 10) + (sequence[3] * 1);
 
-                for (auto& buyer : buyers) 
-                {
-                    resultForSequence += buyer.sellForSequence(sequence);
-                }
+                allSequences.insert(seqAsNum);
+            }
+        }
 
-                if (resultForSequence > total) 
-                {
-                    total = resultForSequence;
-                }
+        std::cout << "Got " << allSequences.size() << " sequences" << std::endl;
+
+        for (const auto& seq : allSequences) 
+        {
+            sequence[0] = seq / 1000;
+            sequence[1] = seq / 100;
+            sequence[2] = seq / 10;
+            sequence[3] = seq / 1;
+
+            for (auto& buyer : buyers) 
+            {
+                resultForSequence += buyer.sellForSequence(sequence);
             }
 
-            std::cout << "Highest up until now: " << total << std::endl;
-
+            if (resultForSequence > total) 
+            {
+                total = resultForSequence;
+            }
         }
 
         return total;
