@@ -136,7 +136,7 @@ vector<Directions> read_input(string filename)
 {
     vector<Directions> input;
     ifstream infile(filename);
-    stringstream buffer;
+
     if (infile.good()) 
     {
         string line;
@@ -145,7 +145,6 @@ vector<Directions> read_input(string filename)
             Directions directions { .dir = line[0], .amount = stoi(line.substr(1)) };
             input.push_back(directions);
         }
-
     }   
     else 
     {
