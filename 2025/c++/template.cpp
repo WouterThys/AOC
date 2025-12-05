@@ -10,40 +10,57 @@
 
 using namespace std;
 
-void first(unique_ptr<int> input) 
+struct Range 
+{
+    int start = 0;
+    int stop = 0;
+};
+
+class Ingredients 
+{
+public:
+
+    vector<Range>& getRanges() 
+    {
+        return ranges;
+    }
+
+    vector<int>& getIds() 
+    {
+        return ids;
+    }
+
+private:
+    vector<Range> ranges;
+    vector<int> ids;
+};
+
+void first(shared_ptr<Ingredients> input) 
 {
 
 }
 
-void second(unique_ptr<int> input) 
+void second(shared_ptr<Ingredients> input) 
 {
 
 }
 
-unique_ptr<int> read_input(string filename) 
+shared_ptr<Ingredients> read_input(string filename) 
 {
     ifstream infile(filename);
-    stringstream buffer;
+
     if (infile.good()) 
     {
-        buffer << infile.rdbuf();
-        auto board = unique_ptr<Floor>(new Floor());
-        if (single) 
-        {
-            board->initSingle(buffer.str());
-        }
-        else 
-        {
-            board->initDouble(buffer.str());
-        }
-        return std::move(board);
+        auto ingredients = make_shared<Ingredients>();
+       
+        return ingredients;
     }   
     else 
     {
         cout << "Bad input file " << filename << endl;
         return nullptr;
     }
-    return make_unique<int>(10);
+
 }
 
 int main (int argc, char* archv[]) 
@@ -57,15 +74,8 @@ int main (int argc, char* archv[])
     std::cout << "Let's get started on " << inputFile << std::endl;
 
     auto input = read_input(inputFile);
-
-    if (inputFile.contains("1")) 
-    {
-        first(std::move(input));
-    }
-    else 
-    {
-        second(std::move(input));
-    }
+    first(input);
+    second(input);
 
     return 0;
 }
