@@ -4,4 +4,5 @@ add_executable(day3 day3/main.cpp)
 add_executable(day4 day4/main.cpp)
 add_executable(day5 day5/main.cpp)
 add_executable(day6 day6/main.cpp)
+add_executable(day7 day7/main.cpp)
 
