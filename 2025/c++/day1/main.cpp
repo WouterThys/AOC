@@ -28,19 +28,13 @@ void first(vector<Directions> input)
         if (d.dir == 'R') 
         {
             position = position + d.amount;
-            position = position % 100; // Wrap around
         }
         else 
         {
-           if (d.amount > position) 
-            {
-                position = (position - (d.amount % 100) + 100) % 100;
-            }
-            else 
-            {
-                position -= d.amount;
-            }
+            // Turing left is the same as turning right 100 - amount
+            position = position + (100 - (d.amount % 100));
         }
+        position = position % 100; // Wrap around
 
         if (position == 0) 
         {
@@ -81,52 +75,23 @@ void second(vector<Directions> input)
 
     for (const auto& d : input) 
     {
-        // Following for loop works
-        // for (int i = 0; i < d.amount; i++) 
-        // {
-        //     if (position == 0) 
-        //     {
-        //         count++;
-        //     }
-        //     if (d.dir == 'R') 
-        //     {
-        //         position++;
-        //         if (position > 99) 
-        //         {
-        //             position = 0;
-        //         }
-        //     }
-        //     else 
-        //     {
-        //         position--;
-        //         if (position < 0) 
-        //         {
-        //             position = 99;
-        //         }
-        //     }
-        // }
-
-        // Part two: 6386 - 51
+        
+// Part one: 1055
+// Part two: 6386 - 51
 
         count += checkZeroClicks(position, d);
 
-        // Count new position
         if (d.dir == 'R') 
         {
             position = position + d.amount;
-            position = position % 100; // Wrap around
         }
         else 
         {
-           if (d.amount > position) 
-            {
-                position = (position - (d.amount % 100) + 100) % 100;
-            }
-            else 
-            {
-                position -= d.amount;
-            }
+            // Turing left is the same as turning right 100 - amount
+            position = (position + (100 - (d.amount % 100)));
         }
+        position = position % 100; // Wrap around
+
     }
 
     cout << "Part two: " << count << " - " << position << endl;
