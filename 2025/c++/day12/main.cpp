@@ -234,17 +234,37 @@ void first(shared_ptr<Data> input)
     auto areas = input->getAreas();
     auto shapes = input->getShapes();
 
+    auto shape_areas = vector<int>();
+    for (const auto& shape : shapes) 
+    {
+        int area = std::count(shape.begin(), shape.end(), true);
+        shape_areas.push_back(area);
+    }
+
     for (auto& area : areas) 
     {
-        auto shape = shapes[4];
-        auto s = shapeRotateN(shapes[4], 2);
+        // auto shape = shapes[4];
+        // auto s = shapeRotateN(shapes[4], 2);
 
-        area.addShape(shape, 0, 0);
-        area.addShape(s, 1, 1);
-        area.printArea();
-        cout << endl;
+        // area.addShape(shape, 0, 0);
+        // area.addShape(s, 1, 1);
+        // area.printArea();
+        // cout << endl;
+        
+        int shapeAreaSum = 0;
+        for (int i = 0; i < area.indices.size(); i++) 
+        {
+            int n = area.indices[i];
+            shapeAreaSum += (n * shape_areas[i]); 
+        }
 
-        break;
+        if (shapeAreaSum <= (area.width * area.height)) 
+        {
+            // Area is big enough to fit all shapes
+            sum++;
+        }
+
+        //cout << "Area sum " << shapeAreaSum << endl;
     }
 
     cout << "Part one: " << sum << endl;
