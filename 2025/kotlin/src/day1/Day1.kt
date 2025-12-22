@@ -5,16 +5,42 @@ import java.nio.file.Paths
 
 class Day1 {
 
-    data class Direction(val dir: Char, val amount: Int)
+    var overnul = 0
+    var beginwaarde = 50
+
+
+    data class Direction(val dir: Char, var amount: Int)
 
     private fun part1(input: List<Direction>) {
 
         for (d in input) {
             println(" - $d")
-        }
+            d.amount = d.amount % 100
 
-        println("Part 1: ")
+            if (d.dir == 'L') {
+                beginwaarde -= d.amount
+                if (beginwaarde < 0) {
+                    beginwaarde = beginwaarde + 100
+                } else
+                    beginwaarde = beginwaarde
+
+            } else {
+                beginwaarde += d.amount
+                if (beginwaarde > 100) {
+                    beginwaarde = beginwaarde - 100
+                }
+                else
+                    beginwaarde = beginwaarde}
+
+
+            if (beginwaarde == 0)
+                overnul++
+            println("overnul = $overnul ")
+            println("beginwaarde = $beginwaarde")
+
+        }
     }
+
 
     private fun part2(input: List<Direction>) {
         // TODO
@@ -49,7 +75,7 @@ class Day1 {
         val realInput = getInput(inputFile)
 
         part1(testInput)
-        part2(testInput)
+        //part2(testInput)
 
     }
 
